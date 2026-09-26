@@ -1,0 +1,33 @@
+# Local credentials and configuration
+.env
+.env.*
+!.env.example
+.vault-token
+.pgpass
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Terraform state and variable values can contain passwords
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+crash.log
+
+# Local data, notes, and generated files
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.log
+notes.txt
+.DS_Store
+__pycache__/
+.pycache/
+*.py[cod]
+.venv/
+venv/
