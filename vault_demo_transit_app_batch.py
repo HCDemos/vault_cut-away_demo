@@ -53,10 +53,10 @@ VAULT_ADDR = os.environ.get("VAULT_ADDR", "")
 VAULT_NAMESPACE = os.environ.get("VAULT_NAMESPACE", "admin")
 TRANSIT_KEY = os.environ.get("VAULT_TRANSIT_KEY", "customer-data")
 KV_TARGETS = {
-    "secret/circleci-demo/demo-secrets": {
+    "secret/demo/app-secrets": {
         "mount": "secret",
-        "path": "circleci-demo/demo-secrets",
-        "label": "secret/circleci-demo/demo-secrets",
+        "path": "demo/app-secrets",
+        "label": "secret/demo/app-secrets",
     },
     "kv-v2/database/dev": {
         "mount": "kv-v2",

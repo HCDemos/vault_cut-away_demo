@@ -2,6 +2,9 @@
 
 This guide maps the current demo from setup through the live walkthrough. It assumes the Vault engines, RDS/Postgres instance, AWS role, and Secrets Sync destinations already exist.
 
+Start with the [setup guide](setup.md) if you need to provision or configure
+the demo. For a quick introduction, see the [demo overview](readme.md).
+
 ## 1. Pre-Demo Setup
 
 Install app dependencies:
@@ -106,19 +109,19 @@ path "transit/decrypt/customer-data" {
   capabilities = ["update"]
 }
 
-path "secret/data/circleci-demo/demo-secrets" {
+path "secret/data/demo/app-secrets" {
   capabilities = ["create", "read", "update", "delete"]
 }
 
-path "secret/metadata/circleci-demo/demo-secrets" {
+path "secret/metadata/demo/app-secrets" {
   capabilities = ["read", "delete"]
 }
 
-path "secret/undelete/circleci-demo/demo-secrets" {
+path "secret/undelete/demo/app-secrets" {
   capabilities = ["update"]
 }
 
-path "secret/destroy/circleci-demo/demo-secrets" {
+path "secret/destroy/demo/app-secrets" {
   capabilities = ["update"]
 }
 
@@ -178,19 +181,19 @@ path "transit/keys/customer-data/rotate" {
   capabilities = ["update"]
 }
 
-path "secret/data/circleci-demo/demo-secrets" {
+path "secret/data/demo/app-secrets" {
   capabilities = ["create", "read", "update", "delete"]
 }
 
-path "secret/metadata/circleci-demo/demo-secrets" {
+path "secret/metadata/demo/app-secrets" {
   capabilities = ["read", "delete"]
 }
 
-path "secret/undelete/circleci-demo/demo-secrets" {
+path "secret/undelete/demo/app-secrets" {
   capabilities = ["update"]
 }
 
-path "secret/destroy/circleci-demo/demo-secrets" {
+path "secret/destroy/demo/app-secrets" {
   capabilities = ["update"]
 }
 
@@ -301,13 +304,13 @@ Bob:
 
 Both Alice and Bob can update the two KV v2 secrets used by Secrets Sync:
 
-- `secret/circleci-demo/demo-secrets`
+- `secret/demo/app-secrets`
 - `kv-v2/database/dev`
 
 Walkthrough:
 
 1. Open the KV v2 tab.
-2. Choose `secret/circleci-demo/demo-secrets`.
+2. Choose `secret/demo/app-secrets`.
 3. Click **Load Secret**.
 4. Enter a key and value, for example `demo_updated_by=alice` or `demo_updated_by=bob`.
 5. Click **Write Secret Version**.

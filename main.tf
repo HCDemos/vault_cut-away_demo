@@ -1,7 +1,7 @@
 locals {
   transit_mount_path = "transit"
   kv_secret_mount    = "secret"
-  kv_secret_path     = "circleci-demo/demo-secrets"
+  kv_secret_path     = "demo/app-secrets"
   kv_demo_mount      = "kv-v2"
   kv_demo_path       = "database/dev"
 
@@ -136,7 +136,7 @@ resource "vault_mount" "kv_demo" {
   }
 }
 
-resource "vault_kv_secret_v2" "circleci_demo" {
+resource "vault_kv_secret_v2" "app_demo" {
   mount               = vault_mount.secret.path
   name                = local.kv_secret_path
   delete_all_versions = false
