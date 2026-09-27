@@ -22,6 +22,80 @@ pip install -r requirements.txt
 
 The Postgres/RDS instance and Vault secrets engines are expected to be provisioned before running the app.
 
+## Terraform setup
+
+Start with [variables.tf](variables.tf), which documents the settings to customize,
+and copy the annotated example:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Edit `terraform.tfvars` for your AWS region, Vault endpoint, database names,
+and allowed client networks. Supply `TF_VAR_login_password`,
+`TF_VAR_db_password`, `TF_VAR_alice_password`, and `TF_VAR_bob_password`
+through your environment or secret store. AWS credentials use the standard
+provider credential chain. Keep Terraform state private: it contains passwords.
+
+**RDS is private by default, with TLS required and no default ingress allowlist.**
+Set `db_allowed_cidrs` to the narrow source ranges for Vault and your app/setup
+clients, preferably individual `/32` addresses. `/0` is rejected. The example
+addresses are placeholders. A security group rule alone does not provide
+connectivity: arrange private routing, VPN, or peering to this VPC before Vault
+verifies the database connection. This stack does not create that connectivity.
+If your isolated demo needs a public endpoint, explicitly set
+`db_publicly_accessible = true` and allow only the actual public egress addresses
+of Vault and your clients.
+
+Vault and its configured userpass auth mount must already exist, and the
+Terraform login must have provisioning permissions. This stack creates the
+database and Transit engines, two KV mounts, policies, and Alice/Bob users.
+The AWS secrets engine/role and Secrets Sync destinations are configured
+separately. Existing mounts must be imported into state or replaced with unused
+mount names where configurable; do not apply this over unrelated Vault mounts.
+
+```bash
+terraform init
+terraform plan
+terraform apply
+```
+
+After applying, export the shared settings rather than retyping database names
+and Vault paths. This produces shell-quoted values in the gitignored `.env` file
+(overwrites that file if it already exists):
+
+```bash
+terraform output -json demo_app_environment | python3 -c 'import json, shlex, sys; print("\n".join("export " + k + "=" + shlex.quote(str(v)) for k, v in json.load(sys.stdin).items()))' > .env
+source .env
+export PGUSER="$(terraform output -raw db_admin_username)"
+./prepare_pg.sh
+```
+
+The preparation script prompts for the RDS admin password. Run it before
+requesting dynamic credentials or seeding data, then follow Seed Data below
+and start the app in the same shell. The Python app does not load `.env`
+automatically. Re-export settings after changing Terraform values. The manual
+configuration examples below are for an existing deployment; do not overwrite
+your exported settings with their example defaults.
+
+| Terraform setting | Used by |
+| --- | --- |
+| `db_name` | RDS database, Vault connection/grants, KV metadata, `PGDATABASE` |
+| `db_schema`, `db_table` | Vault metadata and schema grants, `PGSCHEMA`/`PGTABLE` for setup, seeding, and the app |
+| `db_mount_path`, `transit_key_name` | Vault resources/policies and matching `VAULT_*` app settings |
+| `userpass_mount` | Terraform login, demo users, and `VAULT_USERPASS_MOUNT` |
+| `aws_mount_path`, `aws_role_name` | Policy access to existing AWS credentials and matching app settings |
+
+Terraform is organized into `main.tf` (resources), `variables.tf` (inputs),
+`policies.tf` (demo permissions), `outputs.tf` (shared environment), and
+`versions.tf` (provider requirements). `moved.tf` preserves the old resource
+addresses. Review existing-stack plans carefully: generic names, subnet ranges,
+database username, and encrypted storage defaults can cause replacements.
+Legacy organization-specific tag inputs are replaced by the `tags` map.
+The fixed demo users are `alice`/`bob`; database roles are `readOnly`/`readWrite`.
+Transit uses `transit/`, and KV targets retain the paths shown below.
+Demo destruction skips the final database snapshot; back up any data you need.
+
 ## Vault Paths
 
 Defaults are configurable with environment variables:
@@ -57,7 +131,7 @@ Prepare an existing database with the PostgreSQL `psql` client installed:
 
 ```bash
 export PGHOST="<rds-endpoint>"
-export PGUSER="rootedu" # Database owner/admin; use your actual login.
+export PGUSER="demo_admin" # Database owner/admin; use your actual login.
 export PGDATABASE="postgres"
 export PGSSLMODE="require"
 ./prepare_pg.sh
@@ -159,7 +233,8 @@ python3 seed_customers.py --count 100 --create-schema
   These paths assume the default mount, key, and role names. Adjust them if
   you override the corresponding environment variables. Ensure Bob's attached
   policy includes the Read-write persona rules below. The existing demo uses
-  `bob-policy`; this repository's Terraform creates a policy named `demo-bob`.
+  `bob-policy`; this repository's Terraform creates `${name_prefix}-bob`
+  (`vault-demo-bob` by default).
   Update the policy actually attached to your deployed user, preserving its
   other rules.
 
@@ -323,6 +398,12 @@ Adjust paths if your mounts, roles, or namespace differ.
 
 ## Verification
 
+For local configuration checks, run `terraform fmt -check -recursive` and
+`terraform validate` after initialization. With Terraform 1.7 or newer, run
+`terraform test` for mocked plan tests of network defaults, TLS enforcement,
+and propagation of customized database/Vault settings. These tests create no
+infrastructure and do not verify live network connectivity or authentication.
+
 - Transit tab: insert a customer and confirm `address_cipher` and `ssn_cipher` start with `vault:`.
 - Database tab: use the read-only role to query and the read-write role to insert a sample record.
 - KV v2 tab: write a key, view version metadata, soft delete, undelete, and destroy a selected version.
@@ -331,6 +412,23 @@ Adjust paths if your mounts, roles, or namespace differ.
 
 ## Security Notes
 
+The development server listens only on `127.0.0.1`, with debug mode disabled.
+
+Terraform creates a private RDS instance and requires TLS for database
+connections. Set `db_allowed_cidrs` explicitly to the narrow IPv4 ranges used
+by your app, database preparation client, and Vault. Those clients need private network
+connectivity to the database (for example, through a VPN or a runner inside
+the VPC). For an isolated demo requiring a public endpoint, explicitly set
+`db_publicly_accessible = true` and allow only the clients' public egress
+CIDRs. Unrestricted `/0` ingress is rejected.
+
+Review the Terraform plan before applying these settings to an existing
+database: changing subnet placement or public accessibility can interrupt
+connectivity. Editing this repository does not update deployed infrastructure.
+After provisioning, run `./prepare_pg.sh` as described above before requesting
+dynamic database credentials or seeding data. Terraform configures the database
+and Vault roles; the preparation script creates the application table.
+
 Keep credentials in environment variables or local credential stores. The
 project `.gitignore` excludes local databases, environment files, Terraform
 state/variable files, keys, and caches. Without `FLASK_SECRET_KEY`, the app
@@ -338,3 +436,7 @@ generates a random session-signing key at startup; restarting requires logging
 in again.
 
 This is a demo application, not production scaffolding. Use proper authentication, CSRF protection, server-side sessions, TLS, least-privilege Vault policies, and a production WSGI server for real applications.
+
+## License
+
+The demo code and documentation are available under the [MIT License](LICENSE).

@@ -1,0 +1,39 @@
+# Copy to terraform.tfvars (gitignored) and customize before running Terraform.
+region          = "us-east-1"
+name_prefix     = "vault-demo"
+vault_address   = "https://your-vault.example:8200"
+vault_namespace = "admin" # Use "" for Vault without namespaces.
+login_username  = "terraform-admin" # Existing userpass user with provisioning permissions.
+userpass_mount  = "userpass"        # Must already be enabled.
+
+# Shared across RDS, Vault's connection/grants, and exported app environment.
+db_name     = "demo"
+db_schema   = "public"
+db_table    = "customers"
+db_username = "demo_admin" # Bootstrap/Vault admin only; app users get dynamic logins.
+
+# Private RDS by default. Replace these example private client /32s with your
+# actual Vault and app/setup hosts. Allowing a CIDR does NOT establish routing.
+# Arrange VPN/peering/private routing before Vault verifies the DB connection.
+vpc_cidr               = "10.0.0.0/16"
+db_publicly_accessible = false
+db_allowed_cidrs       = ["10.0.0.10/32", "10.0.0.11/32"]
+# Public demo opt-in: set db_publicly_accessible=true and use only the actual
+# public egress /32s of Vault and your client. Never allow 0.0.0.0/0.
+
+db_instance_class    = "db.t3.micro"
+db_engine_version    = "16.13" # Confirm availability in your AWS region.
+db_allocated_storage = 20      # GiB, encrypted gp3.
+
+db_mount_path    = "db"
+transit_key_name = "customer-data"
+aws_mount_path  = "aws"               # Existing secrets engine; not provisioned here.
+aws_role_name   = "ec2-iam-user-role"  # Existing role; not provisioned here.
+tags = {
+  Purpose = "vault-demo"
+}
+
+# Do not put real passwords in this example. Supply these through your secret
+# store/TF_VAR_* environment variables before plan/apply:
+# TF_VAR_login_password, TF_VAR_db_password,
+# TF_VAR_alice_password, TF_VAR_bob_password.
