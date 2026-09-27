@@ -88,8 +88,9 @@ your exported settings with their example defaults.
 
 Terraform is organized into `main.tf` (resources), `variables.tf` (inputs),
 `policies.tf` (demo permissions), `outputs.tf` (shared environment), and
-`versions.tf` (provider requirements). `moved.tf` preserves the old resource
-addresses. Review existing-stack plans carefully: generic names, subnet ranges,
+`versions.tf` (provider requirements). This configuration targets fresh deployments;
+it does not migrate Terraform state from the original `dap_*` resource addresses.
+Review existing-stack plans carefully: generic names, subnet ranges,
 database username, and encrypted storage defaults can cause replacements.
 Legacy organization-specific tag inputs are replaced by the `tags` map.
 The fixed demo users are `alice`/`bob`; database roles are `readOnly`/`readWrite`.
